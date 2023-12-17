@@ -1,0 +1,32 @@
+name: "test"
+n_gpu: 1
+
+in_channels: 20
+out_channels: 128
+
+arch:
+  _target_: src.model.RawNet2
+  sincnet:
+    out_channels: ${in_channels}
+    kernel_size: 1024
+    stride: 1
+    min_low_hz: 0
+    min_band_hz: 0
+  rawnet_block1:
+    in_channels: ${in_channels}
+    out_channels: ${in_channels}
+    n_layers: 2
+  rawnet_block2:
+    in_channels: ${in_channels}
+    out_channels: ${out_channels}
+    n_layers: 4
+  gru:
+    input_size: ${out_channels}
+    hidden_size: 1024
+    num_layers: 3
+    batch_first: true
+
+batch_size: 64
+sample_size: 64000
+audio_dir: test
+checkpoint: model_best_2.pth

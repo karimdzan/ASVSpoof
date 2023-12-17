@@ -1,0 +1,89 @@
+name: "train"
+n_gpu: 1
+
+in_channels: 20
+out_channels: 128
+
+arch:
+  _target_: src.model.RawNet2
+  sincnet:
+    out_channels: ${in_channels}
+    kernel_size: 1024
+    stride: 1
+    min_low_hz: 0
+    min_band_hz: 0
+  rawnet_block1:
+    in_channels: ${in_channels}
+    out_channels: ${in_channels}
+    n_layers: 2
+  rawnet_block2:
+    in_channels: ${in_channels}
+    out_channels: ${out_channels}
+    n_layers: 4
+  gru:
+    input_size: ${out_channels}
+    hidden_size: 1024
+    num_layers: 3
+    batch_first: true
+
+batch_size: 64
+sample_size: 64000
+
+metrics:
+  - _target_: src.metric.tDCF_EER
+    name: tDCF_EER
+
+loss:
+  _target_: src.loss.CrossEntropyLossWrapper
+  weight: [1, 9]
+
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 0.0001
+  betas: [0.9, 0.999]
+  weight_decay: 0.0001
+
+lr_scheduler:
+  _target_: torch.optim.lr_scheduler.ConstantLR
+  factor: 1.
+  total_iters: 100
+
+data:
+  train:
+    batch_size: ${batch_size}
+    num_workers: 4
+    datasets:
+      - _target_: src.datasets.asvspoof.ASVSpoof
+        path_to_protocol: LA/LA/ASVspoof2019_LA_cm_protocols/ASVspoof2019.LA.cm.train.trn.txt
+        audio_dir: LA/LA/ASVspoof2019_LA_train/flac
+        sample_size: ${sample_size}
+  val:
+    batch_size: ${batch_size}
+    num_workers: 4
+    datasets:
+      - _target_: src.datasets.asvspoof.ASVSpoof
+        path_to_protocol: LA/LA/ASVspoof2019_LA_cm_protocols/ASVspoof2019.LA.cm.dev.trl.txt
+        audio_dir: LA/LA/ASVspoof2019_LA_dev/flac
+        sample_size: ${sample_size}
+  test:
+    batch_size: ${batch_size}
+    num_workers: 4
+    datasets:
+      - _target_: src.datasets.asvspoof.ASVSpoof
+        path_to_protocol: LA/LA/ASVspoof2019_LA_cm_protocols/ASVspoof2019.LA.cm.eval.trl.txt
+        audio_dir: LA/LA/ASVspoof2019_LA_eval/flac
+        sample_size: ${sample_size}
+
+wandb_key: b5bb9b937300c5d613b3a95f676708e5a88d2b7e
+
+trainer: 
+  epochs: 100
+  save_dir: "saved/"
+  save_period: 5
+  verbosity: 2
+  monitor: "min val_loss"
+  early_stop: 100
+  visualize: "wandb"
+  wandb_project: "ASVSpoof"
+  len_epoch: 1000
+  grad_norm_clip: 50
